@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.swagger.parser.OpenAPIParser;
 import io.swagger.parser.Swagger20Parser;
+import io.swagger.parser.SwaggerParser;
 import io.swagger.v3.parser.ObjectMapperFactory;
 import io.swagger.v3.parser.OpenAPIV3Parser;
 import io.swagger.v3.parser.core.models.ParseOptions;
@@ -233,12 +234,13 @@ public class SwaggerTool {
 
     public static boolean swagger2Validator(String swagger, int validationLevel) {
         boolean isSwaggerMissing = false;
-        OpenAPIParser parser1 = new OpenAPIParser();
+        SwaggerParser swaggerParser = new SwaggerParser();
+        OpenAPIParser parser= new OpenAPIParser();
         ParseOptions options = new ParseOptions();
         options.setResolve(true);
         options.setFlatten(true);
         options.setResolveFully(true);
-        SwaggerParseResult parseAttemptForV2 = parser1.readContents(swagger, new ArrayList<>(), options);
+        SwaggerParseResult parseAttemptForV2 = parser.readContents(swagger, new ArrayList<>(), options);
         if (parseAttemptForV2.getMessages().size() > 0) {
             if (validationLevel == 1) {
                 StringBuilder errorMessageBuilder = new StringBuilder("Invalid OpenAPI, Error Code: ");
@@ -271,7 +273,7 @@ public class SwaggerTool {
                                 .append(", Error: ").append(Constants.OPENAPI_PARSE_EXCEPTION_ERROR_MESSAGE)
                                 .append(", Swagger Error: ").append(message);
                         try {
-//                            parser1.parse(swagger);
+                            swaggerParser.parse(swagger);
                             log.error(errorMessageBuilder.toString());
                         } catch (Exception e) {
                             errorMessageBuilder.append(", Cause by: ").append(e.getMessage());
