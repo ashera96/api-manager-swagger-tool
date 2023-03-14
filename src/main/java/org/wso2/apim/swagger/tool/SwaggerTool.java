@@ -23,9 +23,8 @@ package org.wso2.apim.swagger.tool;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.swagger.parser.OpenAPIParser;
 import io.swagger.parser.Swagger20Parser;
-import io.swagger.parser.SwaggerParser;
-import io.swagger.parser.util.SwaggerDeserializationResult;
 import io.swagger.v3.parser.ObjectMapperFactory;
 import io.swagger.v3.parser.OpenAPIV3Parser;
 import io.swagger.v3.parser.core.models.ParseOptions;
@@ -128,20 +127,22 @@ public class SwaggerTool {
             if (swaggerTypeAndName.get(0).equals(Constants.SwaggerVersion.ERROR) && swaggerTypeAndName.size() == 1) {
                 return;
             } else {
-                log.info("---------------- Parsing Started SwaggerName \"" + swaggerTypeAndName.get(1).toString() +
-                        "\" ----------------");
-                boolean isOpenAPIMissing = swagger3Validator(swaggerFileContent, validationLevel);
-                boolean isSwaggerMissing;
-                if (isOpenAPIMissing) {
-                    isSwaggerMissing = swagger2Validator(swaggerFileContent, validationLevel);
-                    if (isSwaggerMissing) {
-                        log.error("Invalid OpenAPI, Error Code: " + Constants.OPENAPI_PARSE_EXCEPTION_ERROR_CODE +
-                                ", Error: " + Constants.OPENAPI_PARSE_EXCEPTION_ERROR_MESSAGE
-                                + ", Swagger Error: " + Constants.SWAGGER_OR_OPENAPI_IS_MISSING_MSG);
+                if (swaggerTypeAndName.get(0).equals(Constants.SwaggerVersion.SWAGGER)) {
+                    log.info("---------------- Parsing Started SwaggerName \"" + swaggerTypeAndName.get(1).toString() +
+                            "\" ----------------");
+                    swagger2Validator(swaggerFileContent, validationLevel);
+                    log.info("---------------- Parsing Complete SwaggerName \"" + swaggerTypeAndName.get(1).toString() +
+                            "\" ---------------- \n");
+                } else if (swaggerTypeAndName.get(0).equals(Constants.SwaggerVersion.OPEN_API)) {
+                    log.info("---------------- Parsing Started openApiName \"" + swaggerTypeAndName.get(1).toString() +
+                            "\" ----------------");
+                    boolean isOpenAPIMissing = swagger3Validator(swaggerFileContent, validationLevel);
+                    if (isOpenAPIMissing) {
+                        swagger2Validator(swaggerFileContent, validationLevel);
                     }
+                    log.info("---------------- Parsing Complete openApiName \"" + swaggerTypeAndName.get(1).toString() +
+                            "\" ----------------\n");
                 }
-                log.info("---------------- Parsing Complete SwaggerName \"" + swaggerTypeAndName.get(1).toString() +
-                        "\" ---------------- \n");
             }
         } else {
             if (swaggerTypeAndName.get(0).equals(Constants.SwaggerVersion.ERROR)) {
@@ -232,12 +233,12 @@ public class SwaggerTool {
 
     public static boolean swagger2Validator(String swagger, int validationLevel) {
         boolean isSwaggerMissing = false;
-        SwaggerParser parser = new SwaggerParser();
-        Swagger20Parser parser1 = new Swagger20Parser();
+        OpenAPIParser parser1 = new OpenAPIParser();
         ParseOptions options = new ParseOptions();
         options.setResolve(true);
+        options.setFlatten(true);
         options.setResolveFully(true);
-        SwaggerDeserializationResult parseAttemptForV2 = parser.readWithInfo(swagger);
+        SwaggerParseResult parseAttemptForV2 = parser1.readContents(swagger, new ArrayList<>(), options);
         if (parseAttemptForV2.getMessages().size() > 0) {
             if (validationLevel == 1) {
                 StringBuilder errorMessageBuilder = new StringBuilder("Invalid OpenAPI, Error Code: ");
@@ -249,7 +250,7 @@ public class SwaggerTool {
                     isSwaggerMissing = true;
                     validationFailedFileCount++;
                 } else {
-                    if (parseAttemptForV2.getSwagger() == null) {
+                    if (parseAttemptForV2.getOpenAPI() == null) {
                         validationFailedFileCount++;
                     } else {
                         validationSuccessFileCount++;
@@ -270,7 +271,7 @@ public class SwaggerTool {
                                 .append(", Error: ").append(Constants.OPENAPI_PARSE_EXCEPTION_ERROR_MESSAGE)
                                 .append(", Swagger Error: ").append(message);
                         try {
-                            parser.parse(swagger);
+//                            parser1.parse(swagger);
                             log.error(errorMessageBuilder.toString());
                         } catch (Exception e) {
                             errorMessageBuilder.append(", Cause by: ").append(e.getMessage());
@@ -285,7 +286,7 @@ public class SwaggerTool {
                 }
                 validationFailedFileCount++;
             }
-            if (parseAttemptForV2.getSwagger() != null) {
+            if (parseAttemptForV2.getOpenAPI() != null) {
                 log.info("Swagger passed with errors, using may lead to functionality issues.");
                 totalPartialyPasedSwaggerFiles++;
             } else {
@@ -293,7 +294,7 @@ public class SwaggerTool {
                 totalMalformedSwaggerFiles++;
             }
         } else {
-            if (parseAttemptForV2.getSwagger() != null) {
+            if (parseAttemptForV2.getOpenAPI() != null) {
                 log.info("Swagger file is valid");
                 validationSuccessFileCount++;
             } else {
@@ -302,6 +303,12 @@ public class SwaggerTool {
             }
         }
         return isSwaggerMissing;
+    }
+
+    String regexToExtractSchemaName = "(?<=components\\/schemas)[^\\s]*";
+
+    private static boolean isSchemaMissing(String errorMessage) {
+        return errorMessage.contains(Constants.SCHEMA_REF_PATH);
     }
 
     public static boolean swagger3Validator(String swagger, int validationLevel) {
