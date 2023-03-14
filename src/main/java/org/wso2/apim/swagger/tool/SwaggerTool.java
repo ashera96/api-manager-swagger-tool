@@ -234,6 +234,7 @@ public class SwaggerTool {
 
     public static boolean swagger2Validator(String swagger, int validationLevel) {
         boolean isSwaggerMissing = false;
+        boolean isValidForAPIM = true;
         SwaggerParser swaggerParser = new SwaggerParser();
         OpenAPIParser parser= new OpenAPIParser();
         ParseOptions options = new ParseOptions();
@@ -242,26 +243,9 @@ public class SwaggerTool {
         options.setResolveFully(true);
         SwaggerParseResult parseAttemptForV2 = parser.readContents(swagger, new ArrayList<>(), options);
         if (parseAttemptForV2.getMessages().size() > 0) {
-            if (validationLevel == 1) {
-                StringBuilder errorMessageBuilder = new StringBuilder("Invalid OpenAPI, Error Code: ");
-                if (parseAttemptForV2.getMessages().contains(Constants.SWAGGER_IS_MISSING_MSG)) {
-                    errorMessageBuilder.append(Constants.INVALID_OAS2_FOUND_ERROR_CODE)
-                            .append(", Error: ").append(Constants.INVALID_OAS2_FOUND_ERROR_MESSAGE)
-                            .append(", Swagger Error: ").append(Constants.SWAGGER_IS_MISSING_MSG);
-                    log.error(errorMessageBuilder.toString());
-                    isSwaggerMissing = true;
-                    validationFailedFileCount++;
-                } else {
-                    if (parseAttemptForV2.getOpenAPI() == null) {
-                        validationFailedFileCount++;
-                    } else {
-                        validationSuccessFileCount++;
-                        log.info("Swagger file will accepted by the APIM 4.0.0 ");
-                    }
-                }
-            } else if (validationLevel == 2) {
+             if (validationLevel == 1 || validationLevel == 2) {
                 for (String message : parseAttemptForV2.getMessages()) {
-                    StringBuilder errorMessageBuilder = new StringBuilder("Invalid OpenAPI, Error Code: ");
+                    StringBuilder errorMessageBuilder = new StringBuilder("Invalid Swagger, Error Code: ");
                     if (message.contains(Constants.SWAGGER_IS_MISSING_MSG)) {
                         errorMessageBuilder.append(Constants.INVALID_OAS2_FOUND_ERROR_CODE)
                                 .append(", Error: ").append(Constants.INVALID_OAS2_FOUND_ERROR_MESSAGE)
@@ -280,6 +264,14 @@ public class SwaggerTool {
                             log.error(errorMessageBuilder.toString());
                         }
                     } else {
+                        if (isSchemaMissing(message)) {
+                            isValidForAPIM = false;
+                        }
+                        // Since OpenAPIParser coverts the $ref to #/components/schemas/ when validating
+                        // we need to replace #/components/schemas/ with #/definitions/ before printing the message
+                        if (message.contains(Constants.SCHEMA_REF_PATH)) {
+                            message = message.replace(Constants.SCHEMA_REF_PATH, "#/definitions/");
+                        }
                         errorMessageBuilder.append(Constants.OPENAPI_PARSE_EXCEPTION_ERROR_CODE)
                                 .append(", Error: ").append(Constants.OPENAPI_PARSE_EXCEPTION_ERROR_MESSAGE)
                                 .append(", Swagger Error: ").append(message);
@@ -292,6 +284,7 @@ public class SwaggerTool {
                 log.info("Swagger passed with errors, using may lead to functionality issues.");
                 totalPartialyPasedSwaggerFiles++;
             } else {
+                isValidForAPIM = false;
                 log.error("Malformed Swagger, Please fix the listed issues before proceeding");
                 totalMalformedSwaggerFiles++;
             }
@@ -300,9 +293,13 @@ public class SwaggerTool {
                 log.info("Swagger file is valid");
                 validationSuccessFileCount++;
             } else {
+                isValidForAPIM = false;
                 log.error(Constants.UNABLE_TO_RENDER_THE_DEFINITION_ERROR);
                 validationFailedFileCount++;
             }
+        }
+        if (isValidForAPIM) {
+            log.info("Swagger file will be accepted by the APIM 4.0.0 ");
         }
         return isSwaggerMissing;
     }
@@ -310,7 +307,7 @@ public class SwaggerTool {
     String regexToExtractSchemaName = "(?<=components\\/schemas)[^\\s]*";
 
     private static boolean isSchemaMissing(String errorMessage) {
-        return errorMessage.contains(Constants.SCHEMA_REF_PATH);
+        return errorMessage.contains(Constants.SCHEMA_REF_PATH) && errorMessage.contains("is missing");
     }
 
     public static boolean swagger3Validator(String swagger, int validationLevel) {
