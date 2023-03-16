@@ -328,44 +328,34 @@ public class SwaggerTool {
                         log.error(errorMessageBuilder.toString());
                         isOpenAPIMissing = true;
                     } else {
-                        logOpenAPINotSupported(); // OpenAPI 3.0.0 is not supported with this iteration
-                        return isOpenAPIMissing;
-//                        errorMessageBuilder.append(Constants.OPENAPI_PARSE_EXCEPTION_ERROR_CODE)
-//                                .append(", Error: ").append(Constants.OPENAPI_PARSE_EXCEPTION_ERROR_MESSAGE)
-//                                .append(", Swagger Error: ").append(message);
-//                        log.error(errorMessageBuilder.toString());
+                        errorMessageBuilder.append(Constants.OPENAPI_PARSE_EXCEPTION_ERROR_CODE)
+                                .append(", Error: ").append(Constants.OPENAPI_PARSE_EXCEPTION_ERROR_MESSAGE)
+                                .append(", Swagger Error: ").append(message);
+                        log.error(errorMessageBuilder.toString());
                     }
                 }
             }
             if (!isOpenAPIMissing) {
-                logOpenAPINotSupported(); // OpenAPI 3.0.0 is not supported with this iteration
-                return isOpenAPIMissing;
-//                if (parseResult.getOpenAPI() != null) {
-//                    log.info("OpenAPI passed with errors, using may lead to functionality issues.");
-//                    totalPartialyPasedSwaggerFiles++;
-//                } else {
-//                    log.error("Malformed OpenAPI, Please fix the listed issues before proceeding");
-//                    ++totalMalformedSwaggerFiles;
-//                }
-//                if (validationLevel != 0) {
-//                    validationFailedFileCount++;
-//                }
+                if (parseResult.getOpenAPI() != null) {
+                    log.info("OpenAPI passed with errors, using may lead to functionality issues.");
+                    totalPartialyPasedSwaggerFiles++;
+                } else {
+                    log.error("Malformed OpenAPI, Please fix the listed issues before proceeding");
+                    ++totalMalformedSwaggerFiles;
+                }
+                if (validationLevel != 0) {
+                    validationFailedFileCount++;
+                }
             }
         } else {
             if (parseResult.getOpenAPI() != null) {
-                logOpenAPINotSupported(); // OpenAPI 3.0.0 is not supported with this iteration
-                return isOpenAPIMissing;
-//                log.info("Swagger file is valid OpenAPI 3 definition");
-//                validationSuccessFileCount++;
+                log.info("Swagger file is valid OpenAPI 3 definition");
+                validationSuccessFileCount++;
             } else {
                 log.error(Constants.UNABLE_TO_RENDER_THE_DEFINITION_ERROR);
                 validationFailedFileCount++;
             }
         }
         return isOpenAPIMissing;
-    }
-
-    public static void logOpenAPINotSupported() {
-        log.info("OpenAPI definition validation is not supported yet");
     }
 }
