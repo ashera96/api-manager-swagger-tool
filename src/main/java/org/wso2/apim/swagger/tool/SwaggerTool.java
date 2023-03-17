@@ -24,7 +24,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.swagger.parser.OpenAPIParser;
-import io.swagger.parser.Swagger20Parser;
 import io.swagger.parser.SwaggerParser;
 import io.swagger.v3.parser.ObjectMapperFactory;
 import io.swagger.v3.parser.OpenAPIV3Parser;
@@ -76,7 +75,7 @@ public class SwaggerTool {
             } else {
                 validateSwaggerContent(swaggerContent, validationLevel);
             }
-            log.info("Summery --- Total Files Processed: " + totalFileCount + ". Total Successful Files Count "
+            log.info("Summary --- Total Files Processed: " + totalFileCount + ". Total Successful Files Count "
                     + validationSuccessFileCount + ". Total Failed Files Count: " + validationFailedFileCount + ". " +
                     "Total Malformed Swagger File Count: " + totalMalformedSwaggerFiles);
         } else {
@@ -212,7 +211,6 @@ public class SwaggerTool {
             return swaggerTypeAndName;
         }
         JsonNode swagger = node.get("swagger");
-        Swagger20Parser parser1 = new Swagger20Parser();
         if (swagger != null) {
             swaggerTypeAndName.add(Constants.SwaggerVersion.SWAGGER);
             swaggerTypeAndName.add(name);
@@ -328,44 +326,42 @@ public class SwaggerTool {
                         log.error(errorMessageBuilder.toString());
                         isOpenAPIMissing = true;
                     } else {
-                        logOpenAPINotSupported(); // OpenAPI 3.0.0 is not supported with this iteration
-                        return isOpenAPIMissing;
-//                        errorMessageBuilder.append(Constants.OPENAPI_PARSE_EXCEPTION_ERROR_CODE)
-//                                .append(", Error: ").append(Constants.OPENAPI_PARSE_EXCEPTION_ERROR_MESSAGE)
-//                                .append(", Swagger Error: ").append(message);
-//                        log.error(errorMessageBuilder.toString());
+                        // If the error message contains "schema is unexpected", we modify the error message notifying
+                        // that the schema object is not adhering to the OpenAPI Specification. Also, we add a note to
+                        // verify the reference object is of the format $ref: '#/components/schemas/{schemaName}'
+                        if (message.contains("schema is unexpected")) {
+                            message = message.concat(". Please verify whether the schema object is adhering to " +
+                                    "the OpenAPI Specification. Make sure that the reference object is of " +
+                                    "format $ref: '#/components/schemas/{schemaName}'");
+                        }
+                        errorMessageBuilder.append(Constants.OPENAPI_PARSE_EXCEPTION_ERROR_CODE)
+                                .append(", Error: ").append(Constants.OPENAPI_PARSE_EXCEPTION_ERROR_MESSAGE)
+                                .append(", Swagger Error: ").append(message);
+                        log.error(errorMessageBuilder.toString());
                     }
                 }
             }
             if (!isOpenAPIMissing) {
-                logOpenAPINotSupported(); // OpenAPI 3.0.0 is not supported with this iteration
-                return isOpenAPIMissing;
-//                if (parseResult.getOpenAPI() != null) {
-//                    log.info("OpenAPI passed with errors, using may lead to functionality issues.");
-//                    totalPartialyPasedSwaggerFiles++;
-//                } else {
-//                    log.error("Malformed OpenAPI, Please fix the listed issues before proceeding");
-//                    ++totalMalformedSwaggerFiles;
-//                }
-//                if (validationLevel != 0) {
-//                    validationFailedFileCount++;
-//                }
+                if (parseResult.getOpenAPI() != null) {
+                    log.info("OpenAPI passed with errors, using may lead to functionality issues.");
+                    totalPartialyPasedSwaggerFiles++;
+                } else {
+                    log.error("Malformed OpenAPI, Please fix the listed issues before proceeding");
+                    ++totalMalformedSwaggerFiles;
+                }
+                if (validationLevel != 0) {
+                    validationFailedFileCount++;
+                }
             }
         } else {
             if (parseResult.getOpenAPI() != null) {
-                logOpenAPINotSupported(); // OpenAPI 3.0.0 is not supported with this iteration
-                return isOpenAPIMissing;
-//                log.info("Swagger file is valid OpenAPI 3 definition");
-//                validationSuccessFileCount++;
+                log.info("Swagger file is valid OpenAPI 3 definition");
+                validationSuccessFileCount++;
             } else {
                 log.error(Constants.UNABLE_TO_RENDER_THE_DEFINITION_ERROR);
                 validationFailedFileCount++;
             }
         }
         return isOpenAPIMissing;
-    }
-
-    public static void logOpenAPINotSupported() {
-        log.info("OpenAPI definition validation is not supported yet");
     }
 }
