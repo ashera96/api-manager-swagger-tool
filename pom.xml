@@ -18,7 +18,6 @@
     <version>1.0.0</version>
 
     <properties>
-        <swagger.parser.version>2.1.12</swagger.parser.version>
         <swagger.parser.v3.version>2.1.13</swagger.parser.v3.version>
         <slf4j.version>2.0.3</slf4j.version>
         <carbon.apimgt.version>9.0.174</carbon.apimgt.version>
@@ -29,11 +28,6 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <dependencies>
-<!--        <dependency>-->
-<!--            <groupId>io.swagger</groupId>-->
-<!--            <artifactId>swagger-parser</artifactId>-->
-<!--            <version>${swagger.parser.version}</version>-->
-<!--        </dependency>-->
         <dependency>
             <groupId>io.swagger.parser.v3</groupId>
             <artifactId>swagger-parser</artifactId>
